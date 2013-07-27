@@ -5,33 +5,34 @@ Serviceable aims to reduce code duplication for common patterns, such as JSON/XM
 API endpoints. Instead of repeating the same patterns in multiple controllers and
 trying to maintain that over time, we extracted those patterns into a module.
 
+Controller:
 
-class PostsController < ApplicationController
+    class PostsController < ApplicationController
+    
+      include Serviceable
+      acts_as_service :post
+    
+    end
 
-  include Serviceable
-  acts_as_service :post
+Route:
 
-end
-
-resources :posts
-
+    resources :posts
 
 
 Standard CRUD
 -------------
 
-POST /posts.json
-GET /posts.json
-GET /posts/1.json
-PUT /posts/1.json
-DELETE /posts/1.json
+    POST /posts.json
+    GET /posts.json
+    GET /posts/1.json
+    PUT /posts/1.json
+    DELETE /posts/1.json
 
 Query Params
 ------------
 
-GET /posts.json
-[{"id":1,"title":"First Post!","body":"Feels good to be first","created_at":"20130727T16:26:00Z"}]
+    GET /posts.json
+    [{"id":1,"title":"First Post!","body":"Feels good to be first","created_at":"20130727T16:26:00Z"}]
 
-GET /posts.json?only=id,title
-[{"id":1,"title","First post!"}]
-
+    GET /posts.json?only=id,title
+    [{"id":1,"title","First post!"}]
