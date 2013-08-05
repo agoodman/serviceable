@@ -61,14 +61,14 @@ module Serviceable
         eval "@#{object}.destroy"
 
         respond_to do |format|
-          format.json { head :ok }
-          format.xml  { head :ok }
+          format.json { head :no_content }
+          format.xml  { head :no_content }
         end
       end
 
       define_method("merge_options") do |options={}|
         merged_options = options || {}
-        for key in [:only, :except]
+        for key in [:only, :except, :include]
           merged_options = merged_options.merge({key => params[key].split(",")}) if params[key]
         end
         return merged_options
