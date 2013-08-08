@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name         = 'serviceable'
-  s.version      = '0.2'
-  s.date         = '2013-07-27'
+  s.version      = '0.3'
+  s.date         = '2013-08-07'
   s.summary      = "Standardized Rails web services with design-time configuration and query string filtering support"
   s.description  = "Decorate your controller classes with acts_as_service :model_name, and instantly support JSON/XML CRUD interface. Override any callback method to customize your endpoint. Allow client to specify response contents using query string filter parameters."
   s.authors      = ["Aubrey Goodman"]

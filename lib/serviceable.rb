@@ -66,27 +66,50 @@ module Serviceable
         end
       end
 
+      # query string params can be given in the following formats:
+      # only=field1,field2
+      # except=field1,field2
+      # include=assoc1
+      # 
+      # if an included association is present, only and except params can be nested
+      # include[user][except]=encrypted_password
+      # include[user][only][]=first_name&include[user][only][]=last_name
       define_method("merge_options") do |options={}|
         merged_options = options || {}
         for key in [:only, :except, :include]
-          merged_options = merged_options.merge({key => params[key].split(",")}) if params[key]
+          opts = {key => params[key]} if params[key]
+          merged_options = merged_options.merge(opts) if opts
         end
+        puts "options before split: #{merged_options}"
+        merged_options = deep_split(merged_options)
+        puts "options after split: #{merged_options}"
         return merged_options
       end
       
       define_method("assign_existing_instance") do
-        eval "@#{object} = object.to_s.camelize.constantize.find(params[:id])"
+        instance = object.to_s.camelize.constantize
+        instance = instance.includes(params[:include]) if params[:include]
+        instance = instance.find(params[:id])
+        eval "@#{object} = instance"
       end
       
       define_method("assign_new_instance") do
-        eval "@#{object} = object.to_s.camelize.constantize.new(params[:#{object}])"
+        instance = object.to_s.camelize.constantize.new(params[object])
+        eval "@#{object} = instance"
       end
       
       define_method("assign_instances") do
-        eval "@#{object.to_s.pluralize} = object.to_s.camelize.constantize.scoped"
+        collection = object.to_s.camelize.constantize
+        collection = collection.includes(params[:include]) if params[:include]
+        eval "@#{object.to_s.pluralize} = collection"
+      end
+      
+      # designed to traverse an entire hash, replacing delimited strings with arrays of symbols
+      define_method("deep_split") do |hash={},pivot=','|
+        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).map(&:to_sym) : (v.kind_of?(Hash) || v.kind_of?(Array) ? deep_split(v,pivot) : v)]}]
       end
     end
-      
+
   end
   
 end
