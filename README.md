@@ -36,3 +36,12 @@ Query Params
 
     GET /posts.json?only=id,title
     [{"id":1,"title","First post!"}]
+    
+    GET /posts.json?include=user
+    [{"id":1,"title":"First Post!","body":"Feels good to be first","created_at":"20130727T16:26:00Z","user":{"id":2,"first_name":"Jim","last_name":"Walker","display_name":"Jim W."}}]
+
+Filter Params
+-------------
+
+    GET /posts.json?where[tags][label]=Pinball
+    returns a set of posts tagged as "Pinball"
