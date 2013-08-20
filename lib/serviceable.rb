@@ -130,24 +130,25 @@ module Serviceable
         for assoc in (params[:where].keys rescue [])
           attrs = params[:where][assoc]
           if attrs.kind_of?(Hash)
+            puts "keys: #{attrs.keys}"
             for target_column in attrs.keys
-              op = :eq if attrs[target_column].kind_of?(String)
-              op ||= attrs[target_column].keys[0].to_sym
-              value = attrs[target_column] if op==:eq
-              value ||= is_time_column?(target_column) ? Time.parse(attrs[target_column][op]) : attrs[target_column][op]
-              unless assoc.to_sym==object.to_s.pluralize.to_sym
-                @collection = @collection.includes(assoc)
-              end
-              puts "op: #{op}"
-              if op==:gt
-                @collection = @collection.where("#{assoc}.#{target_column} > ?",value)
-              elsif op==:lt
-                @collection = @collection.where("#{assoc}.#{target_column} < ?",value)
-              elsif op==:in
-                @collection = @collection.where("#{assoc}.#{target_column} IN (?)",value)
-              elsif op==:eq
-                @collection = @collection.where(assoc => { target_column => value })
-              end
+              if attrs[target_column].kind_of?(String)
+                @collection = @collection.where(assoc => { target_column => attrs[target_column] })
+              elsif attrs[target_column].kind_of?(Hash)
+                for op in attrs[target_column].keys.map(&:to_sym)
+                  value = is_time_column?(target_column) ? Time.parse(attrs[target_column][op]) : attrs[target_column][op]
+                  unless assoc.to_sym==object.to_s.pluralize.to_sym
+                    @collection = @collection.includes(assoc)
+                  end
+                  if op==:gt
+                    @collection = @collection.where("#{assoc}.#{target_column} > ?",value)
+                  elsif op==:lt
+                    @collection = @collection.where("#{assoc}.#{target_column} < ?",value)
+                  elsif op==:in
+                    @collection = @collection.where("#{assoc}.#{target_column} IN (?)",value)
+                  end
+                end
+              end  
             end
           else
             @collection = @collection.includes(assoc).where(assoc => attrs)
