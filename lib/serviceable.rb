@@ -118,7 +118,7 @@ module Serviceable
       # where[tags][id][in]=123,234,345  (OR)
       # where[tags][id]=123&where[tags][id]=234  (AND)
       define_method("assign_collection") do
-        @collection = object.to_s.camelize.constantize
+        @collection = object.to_s.camelize.constantize.scoped
         if params[:include].kind_of?(Hash)
           for assoc in params[:include].keys
             @collection = @collection.includes(assoc.to_sym)
@@ -130,10 +130,15 @@ module Serviceable
         for assoc in (params[:where].keys rescue [])
           attrs = params[:where][assoc]
           if attrs.kind_of?(Hash)
-            puts "keys: #{attrs.keys}"
             for target_column in attrs.keys
               if attrs[target_column].kind_of?(String)
-                @collection = @collection.where(assoc => { target_column => attrs[target_column] })
+                if is_boolean_column?(target_column)
+                  value = true if ['t','true','1','y','yes'].include?(attrs[target_column].to_s)
+                  value = false if ['f','false','0','n','no'].include?(attrs[target_column].to_s)
+                else
+                  value = attrs[target_column]
+                end
+                @collection = @collection.where(assoc => { target_column => value })
               elsif attrs[target_column].kind_of?(Hash)
                 for op in attrs[target_column].keys.map(&:to_sym)
                   value = is_time_column?(target_column) ? Time.parse(attrs[target_column][op]) : attrs[target_column][op]
@@ -162,7 +167,12 @@ module Serviceable
       end
       
       define_method("is_time_column?") do |column|
-        !!column[-3,3]=='_at'
+        object.to_s.capitalize.constantize.columns.select {|e| e.name==column.to_s}.first.type == :timestamp rescue false
+        # !!column[-3,3]=='_at'
+      end
+      
+      define_method("is_boolean_column?") do |column|
+        object.to_s.capitalize.constantize.columns.select {|e| e.name==column.to_s}.first.type == :boolean rescue false
       end
     end
 
