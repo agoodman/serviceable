@@ -150,7 +150,7 @@ module Serviceable
                   elsif op==:lt
                     @collection = @collection.where("#{assoc}.#{target_column} < ?",value)
                   elsif op==:in
-                    @collection = @collection.where("#{assoc}.#{target_column} IN (?)",value)
+                    @collection = @collection.where("#{assoc}.#{target_column} IN (?)",value.split(','))
                   end
                 end
               end  
@@ -168,7 +168,6 @@ module Serviceable
       
       define_method("is_time_column?") do |column|
         object.to_s.capitalize.constantize.columns.select {|e| e.name==column.to_s}.first.type == :timestamp rescue false
-        # !!column[-3,3]=='_at'
       end
       
       define_method("is_boolean_column?") do |column|
