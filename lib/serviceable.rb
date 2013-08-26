@@ -85,7 +85,7 @@ module Serviceable
       # include[user][only]=first_name,last_name
       define_method("merge_options") do |options={}|
         merged_options = options || {}
-        for key in [:only, :except, :include]
+        for key in [:only, :except, :include, :methods]
           opts = {key => params[key]} if params[key]
           merged_options = merged_options.merge(opts) if opts
         end
