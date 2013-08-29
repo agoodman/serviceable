@@ -254,11 +254,11 @@ module Serviceable
       
       # designed to traverse an entire hash, replacing delimited strings with arrays of symbols
       define_method("deep_split") do |hash={},pivot=','|
-        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).map(&:to_sym) : (v.kind_of?(Hash) ? deep_split(v,pivot) : v)]}]
+        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).compact.map(&:to_sym) : (v.kind_of?(Hash) ? deep_split(v,pivot) : v)]}]
       end
       
       define_method("deep_sym") do |hash={}|
-        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.to_sym : (v.kind_of?(Hash) ? deep_sym(v) : (v.kind_of?(Array) ? v.map(&:to_sym) : v))]}]
+        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.to_sym : (v.kind_of?(Hash) ? deep_sym(v) : (v.kind_of?(Array) ? v.compact.map(&:to_sym) : v))]}]
       end
       
       define_method("force_array") do |obj|
