@@ -13,10 +13,18 @@ Controller:
     
     end
 
-Route:
+Basic Routes:
 
     resources :posts
 
+Advanced Feature Routes:
+
+    resources :posts do
+      collection do
+        get :count
+        get :describe
+      end
+    end
 
 ## Standard CRUD
 
@@ -26,6 +34,23 @@ Route:
     PUT /posts/1.json
     DELETE /posts/1.json
 
+## Advanced Features
+
+Retrieve the number of records using the given query params
+
+    GET /posts/count.json
+    86
+
+Use query params to filter the set
+
+    GET /posts/count.json?where[posts][author_id]=123
+    14
+
+Discover the available extensions beyond basic CRUD, such as allowed includes and methods
+
+    GET /posts/describe.json
+    {"allowed_includes":["tags","author"],"allowed_methods":[]}
+
 ## Query Params
 
 Full listing returned when no query params are given
@@ -33,7 +58,7 @@ Full listing returned when no query params are given
     GET /posts.json
     [{"id":1,"title":"First Post!","body":"Feels good to be first","created_at":"20130727T16:26:00Z"}]
 
-Use the <code>only</code> param to specify fields on the collection
+Use the <code>only</code> and/or <code>except</code> params to specify fields on the collection
 
     GET /posts.json?only=id,title
     [{"id":1,"title","First post!"}]
@@ -42,6 +67,11 @@ Use the <code>include</code> param to specify associated objects or collections
 
     GET /posts.json?include=user
     [{"id":1,"title":"First Post!","body":"Feels good to be first","created_at":"20130727T16:26:00Z","user":{"id":2,"first_name":"Jim","last_name":"Walker","display_name":"Jim W."}}]
+
+Use the <code>methods</code> param to include the return values from a set of methods on each object
+
+    GET /posts.json?methods=max_rating
+    [{"id":1,"title":"First Post!","body":"Feels good to be first","created_at":"20130727T16:26:00Z","max_rating":3}]
 
 Combine params to configure the result contents
 

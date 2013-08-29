@@ -1,3 +1,12 @@
+class Hash
+  def &(other)
+    reject {|k,v| !(other.include?(k) && ([v]&[other[k]]).any?)}
+  end
+  def compact
+    reject {|k,v| k.nil? || v.nil?}.map {|k,v| }
+  end
+end
+
 module Serviceable
   
   def self.included(base)
@@ -13,17 +22,17 @@ module Serviceable
     #   acts_as_service :post
     # end
     #
-    def acts_as_service(object,options={})
+    def acts_as_service(object,defaults={})
 
       before_filter :assign_new_instance, only: :create
       before_filter :assign_existing_instance, only: [ :show, :update, :destroy ]
       before_filter :assign_collection, only: [ :index, :count ]
       before_filter :did_assign_collection, only: [ :index, :count ]
-
+      
       define_method("index") do
         respond_to do |format|
-          format.json { render json: @collection.to_json(merge_options(options[:index])) }
-          format.xml  { render xml: @collection.to_xml(merge_options(options[:index])) }
+          format.json { render json: @collection.to_json(merge_options(defaults[:index])) }
+          format.xml  { render xml: @collection.to_xml(merge_options(defaults[:index])) }
         end
       end
       
@@ -48,8 +57,8 @@ module Serviceable
 
       define_method("show") do
         respond_to do |format|
-          format.json { render json: @instance.to_json(merge_options(options[:show])) }
-          format.xml  { render xml: @instance.to_xml(merge_options(options[:show])) }
+          format.json { render json: @instance.to_json(merge_options(defaults[:show])) }
+          format.xml  { render xml: @instance.to_xml(merge_options(defaults[:show])) }
         end
       end
 
@@ -73,22 +82,104 @@ module Serviceable
           format.xml  { head :no_content }
         end
       end
+      
+      define_method("describe") do
+        details = {
+          allowed_includes: force_array(defaults[:allowed_includes]),
+          allowed_methods: force_array(defaults[:allowed_methods])
+        }
+        respond_to do |format|
+          format.json { render json: details.to_json, status: :ok }
+          format.xml { render xml: details.to_xml, status: :ok }
+        end
+      end
 
       # query string params can be given in the following formats:
       # only=field1,field2
       # except=field1,field2
       # include=assoc1
+      # methods=my_helper
       # 
       # if an included association is present, only and except params can be nested
       # include[user][except]=encrypted_password
       # include[user][only][]=first_name&include[user][only][]=last_name
       # include[user][only]=first_name,last_name
+      #
+      # NOTE: includes and methods are not supported for nested associations
+      #
+      # options specified by the developer are considered mandatory and can not be
+      # overridden by the client
+      #
+      # client may only use includes and methods that are explicitly enabled by
+      # the developer
       define_method("merge_options") do |options={}|
         merged_options = options || {}
-        for key in [:only, :except, :include, :methods]
+        for key in [:only, :except]
           opts = {key => params[key]} if params[key]
           merged_options = merged_options.merge(opts) if opts
         end
+        if params[:include].kind_of?(Hash)
+          requested_includes = params[:include]
+        elsif params[:include].kind_of?(Array)
+          requested_includes = Hash[params[:include].map {|e| [e,{}]}]
+        elsif params[:include].kind_of?(String)
+          requested_includes = Hash[params[:include].split(',').map {|e| [e,{}]}]
+        else
+          requested_includes = {}
+        end
+        if defaults[:allowed_includes].kind_of?(Hash)
+          allowed_includes = defaults[:allowed_includes]
+        elsif defaults[:allowed_includes].kind_of?(Array)
+          allowed_includes = Hash[defaults[:allowed_includes].map {|e| [e,{}]}]
+        elsif defaults[:allowed_includes].kind_of?(String)
+          allowed_includes = Hash[defaults[:allowed_includes].split(',').map {|e| [e,{}]}]
+        else
+          allowed_includes = {}
+        end
+        requested_includes = deep_sym(requested_includes)
+        allowed_includes = deep_sym(allowed_includes)
+        whitelisted_includes = {}
+        requested_includes.keys.each do |k|
+          if allowed_includes.keys.include?(k)
+            values = requested_includes[k]
+            opts = {}
+            opts[:only] = values[:only] if values[:only]
+            opts[:except] = values[:except] if values[:except]
+            whitelisted_includes[k] = opts
+          end
+        end
+        if options[:include].kind_of?(Hash) 
+          mandatory_includes = options[:include]
+        elsif options[:include].kind_of?(Array)
+          mandatory_includes = Hash[options[:include].map {|e| [e,{}]}]
+        else
+          mandatory_includes = {options[:include] => {}}
+        end
+        whitelisted_includes = whitelisted_includes.merge(mandatory_includes)
+        merged_options = merged_options.merge({include: whitelisted_includes})
+
+        if params[:methods].kind_of?(Hash)
+          requested_methods = params[:methods].keys
+        elsif params[:methods].kind_of?(Array)
+          requested_methods = params[:methods]
+        elsif params[:methods].kind_of?(String)
+          requested_methods = params[:methods].split(',')
+        else
+          requested_methods = []
+        end
+        if defaults[:allowed_methods].kind_of?(Hash)
+          allowed_methods = defaults[:allowed_methods].keys
+        elsif defaults[:allowed_methods].kind_of?(Array)
+          allowed_methods = defaults[:allowed_methods]
+        elsif defaults[:allowed_methods].kind_of?(String)
+          allowed_methods = defaults[:allowed_methods].split(',')
+        else
+          allowed_methods = []
+        end
+        requested_methods = requested_methods.map(&:to_sym)
+        allowed_methods = allowed_methods.map(&:to_sym)
+        whitelisted_methods = requested_methods & allowed_methods
+        merged_options = merged_options.merge({methods: whitelisted_methods}) if whitelisted_methods.any?
         merged_options = deep_split(merged_options)
         return merged_options
       end
@@ -166,12 +257,28 @@ module Serviceable
         Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).map(&:to_sym) : (v.kind_of?(Hash) ? deep_split(v,pivot) : v)]}]
       end
       
+      define_method("deep_sym") do |hash={}|
+        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.to_sym : (v.kind_of?(Hash) ? deep_sym(v) : (v.kind_of?(Array) ? v.map(&:to_sym) : v))]}]
+      end
+      
+      define_method("force_array") do |obj|
+        obj.kind_of?(Array) ? obj : (obj.kind_of?(Hash) ? obj.keys : (obj==nil ? [] : [obj]))
+      end
+      
+      define_method("required_fields") do
+        object.to_s.capitalize.constantize.accessible_attributes.select {|e| is_required_column?(e)}
+      end
+      
       define_method("is_time_column?") do |column|
         object.to_s.capitalize.constantize.columns.select {|e| e.name==column.to_s}.first.type == :timestamp rescue false
       end
       
       define_method("is_boolean_column?") do |column|
         object.to_s.capitalize.constantize.columns.select {|e| e.name==column.to_s}.first.type == :boolean rescue false
+      end
+      
+      define_method("is_required_column?") do |column|
+        object.to_s.capitalize.constantize.validators_on(column).map(&:class).include?(ActiveModel::Validations::PresenceValidator)
       end
     end
 
