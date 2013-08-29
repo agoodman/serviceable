@@ -156,7 +156,7 @@ module Serviceable
           mandatory_includes = {options[:include] => {}}
         end
         whitelisted_includes = whitelisted_includes.merge(mandatory_includes)
-        merged_options = merged_options.merge({include: whitelisted_includes})
+        merged_options = merged_options.merge({include: whitelisted_includes}) if whitelisted_includes.keys.any?
 
         if params[:methods].kind_of?(Hash)
           requested_methods = params[:methods].keys
