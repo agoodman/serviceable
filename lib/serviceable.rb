@@ -3,7 +3,7 @@ class Hash
     reject {|k,v| !(other.include?(k) && ([v]&[other[k]]).any?)}
   end
   def compact
-    reject {|k,v| k.nil? || v.nil?}.map {|k,v| }
+    reject {|k,v| k.nil? || v.nil?}
   end
 end
 
@@ -113,7 +113,7 @@ module Serviceable
       # client may only use includes and methods that are explicitly enabled by
       # the developer
       define_method("merge_options") do |options={}|
-        merged_options = options || {}
+        merged_options = {}
         for key in [:only, :except]
           opts = {key => params[key]} if params[key]
           merged_options = merged_options.merge(opts) if opts
@@ -148,14 +148,16 @@ module Serviceable
             whitelisted_includes[k] = opts
           end
         end
-        if options[:include].kind_of?(Hash) 
-          mandatory_includes = options[:include]
-        elsif options[:include].kind_of?(Array)
-          mandatory_includes = Hash[options[:include].map {|e| [e,{}]}]
-        else
-          mandatory_includes = {options[:include] => {}}
+        if options && options[:include]
+          if options[:include].kind_of?(Hash) 
+            mandatory_includes = options[:include]
+          elsif options[:include].kind_of?(Array)
+            mandatory_includes = Hash[options[:include].map {|e| [e,{}]}]
+          else
+            mandatory_includes = {options[:include] => {}}
+          end
+          whitelisted_includes = whitelisted_includes.merge(mandatory_includes)
         end
-        whitelisted_includes = whitelisted_includes.merge(mandatory_includes)
         merged_options = merged_options.merge({include: whitelisted_includes}) if whitelisted_includes.keys.any?
 
         if params[:methods].kind_of?(Hash)
@@ -180,7 +182,7 @@ module Serviceable
         allowed_methods = allowed_methods.map(&:to_sym)
         whitelisted_methods = requested_methods & allowed_methods
         merged_options = merged_options.merge({methods: whitelisted_methods}) if whitelisted_methods.any?
-        merged_options = deep_split(merged_options)
+        merged_options = deep_split(merged_options.compact)
         return merged_options
       end
       
@@ -254,11 +256,11 @@ module Serviceable
       
       # designed to traverse an entire hash, replacing delimited strings with arrays of symbols
       define_method("deep_split") do |hash={},pivot=','|
-        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).compact.map(&:to_sym) : (v.kind_of?(Hash) ? deep_split(v,pivot) : v)]}]
+        Hash[hash.reject {|k,v| k.nil? || v.nil?}.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).compact.map(&:to_sym) : (v.kind_of?(Hash) ? deep_split(v,pivot) : v)]}]
       end
       
       define_method("deep_sym") do |hash={}|
-        Hash[hash.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.to_sym : (v.kind_of?(Hash) ? deep_sym(v) : (v.kind_of?(Array) ? v.compact.map(&:to_sym) : v))]}]
+        Hash[hash.reject {|k,v| k.nil? || v.nil?}.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.to_sym : (v.kind_of?(Hash) ? deep_sym(v) : (v.kind_of?(Array) ? v.compact.map(&:to_sym) : v))]}]
       end
       
       define_method("force_array") do |obj|
