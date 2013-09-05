@@ -118,24 +118,8 @@ module Serviceable
           opts = {key => params[key]} if params[key]
           merged_options = merged_options.merge(opts) if opts
         end
-        if params[:include].kind_of?(Hash)
-          requested_includes = params[:include]
-        elsif params[:include].kind_of?(Array)
-          requested_includes = Hash[params[:include].map {|e| [e,{}]}]
-        elsif params[:include].kind_of?(String)
-          requested_includes = Hash[params[:include].split(',').map {|e| [e,{}]}]
-        else
-          requested_includes = {}
-        end
-        if defaults[:allowed_includes].kind_of?(Hash)
-          allowed_includes = defaults[:allowed_includes]
-        elsif defaults[:allowed_includes].kind_of?(Array)
-          allowed_includes = Hash[defaults[:allowed_includes].map {|e| [e,{}]}]
-        elsif defaults[:allowed_includes].kind_of?(String)
-          allowed_includes = Hash[defaults[:allowed_includes].split(',').map {|e| [e,{}]}]
-        else
-          allowed_includes = {}
-        end
+        requested_includes = hash_for(params[:includes])
+        allowed_includes = hash_for(defaults[:allowed_includes])
         requested_includes = deep_sym(requested_includes)
         allowed_includes = deep_sym(allowed_includes)
         whitelisted_includes = {}
@@ -160,26 +144,10 @@ module Serviceable
         end
         merged_options = merged_options.merge({include: whitelisted_includes}) if whitelisted_includes.keys.any?
 
-        if params[:methods].kind_of?(Hash)
-          requested_methods = params[:methods].keys
-        elsif params[:methods].kind_of?(Array)
-          requested_methods = params[:methods]
-        elsif params[:methods].kind_of?(String)
-          requested_methods = params[:methods].split(',')
-        else
-          requested_methods = []
-        end
-        if defaults[:allowed_methods].kind_of?(Hash)
-          allowed_methods = defaults[:allowed_methods].keys
-        elsif defaults[:allowed_methods].kind_of?(Array)
-          allowed_methods = defaults[:allowed_methods]
-        elsif defaults[:allowed_methods].kind_of?(String)
-          allowed_methods = defaults[:allowed_methods].split(',')
-        else
-          allowed_methods = []
-        end
-        requested_methods = requested_methods.map(&:to_sym)
-        allowed_methods = allowed_methods.map(&:to_sym)
+        requested_methods = array_for(params[:methods])
+        allowed_methods = array_for(defaults[:allowed_methods])
+        requested_methods = requested_methods.map(&:to_s).map(&:to_sym)
+        allowed_methods = allowed_methods.map(&:to_s).map(&:to_sym)
         whitelisted_methods = requested_methods & allowed_methods
         merged_options = merged_options.merge({methods: whitelisted_methods}) if whitelisted_methods.any?
         merged_options = deep_split(merged_options.compact)
@@ -254,6 +222,19 @@ module Serviceable
         end
       end
       
+      define_method("array_for") do |obj|
+        if obj.kind_of?(Hash)
+          arr = params[:methods].keys
+        elsif obj.kind_of?(Array)
+          arr = params[:methods]
+        elsif obj.kind_of?(String)
+          arr = params[:methods].split(',')
+        else
+          arr = Array(obj)
+        end
+        arr.compact.uniq rescue []
+      end
+      
       # designed to traverse an entire hash, replacing delimited strings with arrays of symbols
       define_method("deep_split") do |hash={},pivot=','|
         Hash[hash.reject {|k,v| k.nil? || v.nil?}.map {|k,v| [k.to_sym,v.kind_of?(String) ? v.split(pivot).compact.map(&:to_sym) : (v.kind_of?(Hash) ? deep_split(v,pivot) : v)]}]
@@ -265,6 +246,19 @@ module Serviceable
       
       define_method("force_array") do |obj|
         obj.kind_of?(Array) ? obj : (obj.kind_of?(Hash) ? obj.keys : (obj==nil ? [] : [obj]))
+      end
+      
+      define_method("hash_for") do |obj|
+        if obj.kind_of?(Hash)
+          hash = obj
+        elsif obj.kind_of?(Array)
+          hash = Hash[obj.map {|e| [e,{}]}]
+        elsif obj.kind_of?(String)
+          hash = Hash[obj.split(',').map {|e| [e,{}]}]
+        else
+          hash = {}
+        end
+        hash
       end
       
       define_method("required_fields") do
