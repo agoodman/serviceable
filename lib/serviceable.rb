@@ -26,6 +26,7 @@ module Serviceable
 
       before_filter :assign_new_instance, only: :create
       before_filter :assign_existing_instance, only: [ :show, :update, :destroy ]
+      before_filter :did_assign_instance, only: [ :show, :update ]
       before_filter :assign_collection, only: [ :index, :count ]
       before_filter :did_assign_collection, only: [ :index, :count ]
       
@@ -46,8 +47,8 @@ module Serviceable
       define_method("create") do
         respond_to do |format|
           if @instance.save
-            format.json { render json: @instance }
-            format.xml  { render xml: @instance }
+            format.json { render json: @instance, status: :created }
+            format.xml  { render xml: @instance, status: :created }
           else
             format.json { render json: { errors: @instance.errors.full_messages }, status: :unprocessable_entity }
             format.xml  { render xml: { errors: @instance.errors.full_messages }, status: :unprocessable_entity }
@@ -149,13 +150,17 @@ module Serviceable
         requested_methods = requested_methods.map(&:to_s).map(&:to_sym)
         allowed_methods = allowed_methods.map(&:to_s).map(&:to_sym)
         whitelisted_methods = requested_methods & allowed_methods
+        if options && options[:methods]
+          mandatory_methods = array_for(options[:methods])
+          whitelisted_methods = whitelisted_methods + mandatory_methods
+        end
         merged_options = merged_options.merge({methods: whitelisted_methods}) if whitelisted_methods.any?
         merged_options = deep_split(merged_options.compact)
         return merged_options
       end
       
       define_method("assign_existing_instance") do
-        @instance = object.to_s.camelize.constantize
+        @instance = object.to_s.camelize.constantize.scoped
         if params[:include].kind_of?(Hash)
           @instance = @instance.includes(params[:include].keys)
         end
@@ -167,6 +172,10 @@ module Serviceable
       
       define_method("assign_new_instance") do
         @instance = object.to_s.camelize.constantize.new(params[object])
+      end
+      
+      define_method("did_assign_instance") do
+        # do nothing
       end
       
       # query string params can be used to filter collections
@@ -224,11 +233,11 @@ module Serviceable
       
       define_method("array_for") do |obj|
         if obj.kind_of?(Hash)
-          arr = params[:methods].keys
+          arr = obj.keys
         elsif obj.kind_of?(Array)
-          arr = params[:methods]
+          arr = obj
         elsif obj.kind_of?(String)
-          arr = params[:methods].split(',')
+          arr = obj.split(',')
         else
           arr = Array(obj)
         end
