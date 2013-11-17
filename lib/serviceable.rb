@@ -25,8 +25,9 @@ module Serviceable
     def acts_as_service(object,defaults={})
 
       before_filter :assign_new_instance, only: :create
+      before_filter :did_assign_new_instance, only: :create
       before_filter :assign_existing_instance, only: [ :show, :update, :destroy ]
-      before_filter :did_assign_instance, only: [ :show, :update ]
+      before_filter :did_assign_existing_instance, only: [ :show, :update ]
       before_filter :assign_collection, only: [ :index, :count ]
       before_filter :did_assign_collection, only: [ :index, :count ]
       
@@ -170,11 +171,15 @@ module Serviceable
         @instance = @instance.find(params[:id])
       end
       
+      define_method("did_assign_existing_instance") do
+        # do nothing
+      end
+      
       define_method("assign_new_instance") do
         @instance = object.to_s.camelize.constantize.new(params[object])
       end
       
-      define_method("did_assign_instance") do
+      define_method("did_assign_new_instance") do
         # do nothing
       end
       
@@ -229,6 +234,10 @@ module Serviceable
             @collection = @collection.includes(assoc).where(assoc => attrs)
           end
         end
+      end
+      
+      define_method("did_assign_collection") do
+        # do nothing
       end
       
       define_method("array_for") do |obj|
