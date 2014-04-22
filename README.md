@@ -4,6 +4,10 @@ Serviceable aims to reduce code duplication for common patterns, such as JSON/XM
 API endpoints. Instead of repeating the same patterns in multiple controllers and
 trying to maintain that over time, we extracted those patterns into a module.
 
+Configuration:
+
+    gem 'serviceable'
+    
 Controller:
 
     class PostsController < ApplicationController
