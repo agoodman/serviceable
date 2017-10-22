@@ -176,11 +176,15 @@ module Serviceable
       end
       
       define_method("assign_new_instance") do
-        @instance = object.to_s.camelize.constantize.new(params[object])
+        @instance = object.to_s.camelize.constantize.new(object_params)
       end
       
       define_method("did_assign_new_instance") do
         # do nothing
+      end
+      
+      define_method("object_params") do
+        params.require(object).permit!
       end
       
       # query string params can be used to filter collections
