@@ -161,7 +161,7 @@ module Serviceable
       end
       
       define_method("assign_existing_instance") do
-        @instance = object.to_s.camelize.constantize.scoped
+        @instance = object.to_s.camelize.constantize.all
         if params[:include].kind_of?(Hash)
           @instance = @instance.includes(params[:include].keys)
         end
@@ -193,7 +193,7 @@ module Serviceable
       # where[tags][id][in]=123,234,345  (OR)
       # where[tags][id]=123&where[tags][id]=234  (AND)
       define_method("assign_collection") do
-        @collection = object.to_s.camelize.constantize.scoped
+        @collection = object.to_s.camelize.constantize.all
         if params[:include].kind_of?(Hash)
           for assoc in params[:include].keys
             @collection = @collection.includes(assoc.to_sym)
