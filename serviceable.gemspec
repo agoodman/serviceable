@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.email        = 'aubrey.goodman@gmail.com'
   s.files        = Dir["{lib}/**/*.rb", "LICENSE", "*.md"]
   s.require_path = 'lib'
-  s.homepage     = 'https://github.com/verifip/serviceable'
+  s.homepage     = 'https://github.com/agoodman/serviceable'
   s.license      = 'MIT'
 end
 
