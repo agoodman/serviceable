@@ -24,12 +24,12 @@ module Serviceable
     #
     def acts_as_service(object,defaults={})
 
-      before_filter :assign_new_instance, only: :create
-      before_filter :did_assign_new_instance, only: :create
-      before_filter :assign_existing_instance, only: [ :show, :update, :destroy ]
-      before_filter :did_assign_existing_instance, only: [ :show, :update ]
-      before_filter :assign_collection, only: [ :index, :count ]
-      before_filter :did_assign_collection, only: [ :index, :count ]
+      before_action :assign_new_instance, only: :create
+      before_action :did_assign_new_instance, only: :create
+      before_action :assign_existing_instance, only: [ :show, :update, :destroy ]
+      before_action :did_assign_existing_instance, only: [ :show, :update ]
+      before_action :assign_collection, only: [ :index, :count ]
+      before_action :did_assign_collection, only: [ :index, :count ]
       
       define_method("index") do
         respond_to do |format|
